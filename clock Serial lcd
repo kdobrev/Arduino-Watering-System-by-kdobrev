@@ -1,0 +1,100 @@
+/*
+Clock + alarm
+Serial
+lcd
+*/
+
+#include <Time.h>  
+#include <TimeAlarms.h>
+#include <Wire.h>  
+#include <DS1307RTC.h>  // a basic DS1307 library that returns time as a time_t
+#include <LCD.h>
+#include <LiquidCrystal_I2C.h>
+
+#define I2C_ADDR    0x27 // <<----- Add your address here.  Find it from I2C Scanner
+#define BACKLIGHT_PIN     3
+#define En_pin  2
+#define Rw_pin  1
+#define Rs_pin  0
+#define D4_pin  4
+#define D5_pin  5
+#define D6_pin  6
+#define D7_pin  7
+
+int n = 1;
+
+LiquidCrystal_I2C	lcd(I2C_ADDR,En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin);
+//END DISPLAY SET
+
+void setup()  {
+  Serial.begin(9600);
+  setSyncProvider(RTC.get);   // the function to get the time from the RTC 
+  //setTime(hour(),minute(),second(),day(),month(),year()); // set time to Saturday 8:29:00am Jan 1 2011
+  Alarm.timerRepeat(10, Repeats);            // timer for every 15 seconds
+  
+  lcd.begin (16,2); //  <<----- My LCD was 16x2
+  // Switch on the backlight
+  lcd.setBacklightPin(BACKLIGHT_PIN,POSITIVE);
+  lcd.setBacklight(HIGH);
+  lcd.home(); // go home
+  lcd.print("Display warm-up!");
+  delay(2000);
+  lcd.clear(); 
+}
+
+void loop()
+{
+   Alarm.delay(1000);
+   digitalClockDisplay_serial();
+   digitalClockDisplay_lcd(); 
+}
+
+void digitalClockDisplay_serial(){
+  // digital clock display of the time
+  Serial.print(hour());
+  printDigits(minute());
+  printDigits(second());
+  Serial.print(" ");
+  Serial.print(day());
+  Serial.print("/");
+  Serial.print(month());
+  Serial.print("/");
+  Serial.print(year()); 
+  Serial.println(); 
+}
+void digitalClockDisplay_lcd(){
+  lcd.clear();
+  lcd.setCursor (0,0);        // go to start of 1nd line
+  // digital clock display of the time
+  lcd.print(hour());
+  printDigits_lcd(minute());
+  printDigits_lcd(second());
+  //lcd.print(" ");
+  lcd.setCursor (0,1);        // go to start of 1nd line
+  lcd.print(day());
+  lcd.print("/");
+  lcd.print(month());
+  lcd.print("/");
+  lcd.print(year()); 
+  //lcd.println(); 
+}
+void printDigits(int digits){
+  // utility function for digital clock display: prints preceding colon and leading 0
+  Serial.print(":");
+  if(digits < 10)
+    Serial.print('0');
+  Serial.print(digits);
+}
+void printDigits_lcd(int digits){
+  // utility function for digital clock display: prints preceding colon and leading 0
+  lcd.print(":");
+  if(digits < 10)
+    lcd.print('0');
+  lcd.print(digits);
+}
+
+void Repeats(){
+  lcd.setCursor(10,0);
+  lcd.print("Hey!");
+  Serial.println("Hey!");
+}

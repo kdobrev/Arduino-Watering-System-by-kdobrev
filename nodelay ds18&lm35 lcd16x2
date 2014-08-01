@@ -1,0 +1,192 @@
+/* 
+ //Blink without Delay
+ //temp sensors DS18 & LM35
+ //lcd display
+*/
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <Time.h>
+
+//DISPLAY SET
+#include <Wire.h>
+#include <LCD.h>
+#include <LiquidCrystal_I2C.h>
+
+#define I2C_ADDR    0x27 // <<----- Add your address here.  Find it from I2C Scanner
+#define BACKLIGHT_PIN     3
+#define En_pin  2
+#define Rw_pin  1
+#define Rs_pin  0
+#define D4_pin  4
+#define D5_pin  5
+#define D6_pin  6
+#define D7_pin  7
+
+int n = 1;
+
+LiquidCrystal_I2C	lcd(I2C_ADDR,En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin);
+//END DISPLAY SET
+
+// Data wire is plugged into port 2 on the Arduino
+#define ONE_WIRE_BUS 2
+
+// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
+OneWire oneWire(ONE_WIRE_BUS);
+
+// Pass our oneWire reference to Dallas Temperature. 
+DallasTemperature sensors(&oneWire);
+
+// arrays to hold device address
+DeviceAddress insideThermometer;
+
+// constants won't change. Used here to 
+// set pin numbers:
+const int ledPin =  13;      // the number of the LED pin
+
+// Variables will change:
+int ledState = LOW;             // ledState used to set the LED
+
+//timers:
+unsigned long previous_led_blink_Millis = 0;        // will store last time LED was updated
+unsigned long interval_led_blink = 200;           // interval at which to blink (milliseconds)
+unsigned long previous_temp_get_Millis = 0;
+unsigned long interval_temp_get = 10000;
+
+void setup() {
+  lcd.begin (16,2); //  <<----- My LCD was 16x2
+  // Switch on the backlight
+  lcd.setBacklightPin(BACKLIGHT_PIN,POSITIVE);
+  lcd.setBacklight(HIGH);
+  lcd.home (); // go home
+  lcd.print("Thermometer"); 
+  
+  // set the digital pin as output:
+  pinMode(ledPin, OUTPUT);
+
+  // start serial port
+  Serial.begin(9600);
+  Serial.println("Dallas Temperature IC Control Library Demo");
+
+  // locate devices on the bus
+  Serial.print("Locating devices...");
+  sensors.begin();
+  Serial.print("Found ");
+  Serial.print(sensors.getDeviceCount(), DEC);
+  Serial.println(" devices.");
+
+  // assign address manually.  the addresses below will beed to be changed
+  // to valid device addresses on your bus.  device address can be retrieved
+  // by using either oneWire.search(deviceAddress) or individually via
+  // sensors.getAddress(deviceAddress, index)
+  //insideThermometer = { 0x28, 0x1D, 0x39, 0x31, 0x2, 0x0, 0x0, 0xF0 };
+
+  // Method 1:
+  // search for devices on the bus and assign based on an index.  ideally,
+  // you would do this to initially discover addresses on the bus and then 
+  // use those addresses and manually assign them (see above) once you know 
+  // the devices on your bus (and assuming they don't change).
+  if (!sensors.getAddress(insideThermometer, 0)) Serial.println("Unable to find address for Device 0"); 
+
+  // method 2: search()
+  // search() looks for the next device. Returns 1 if a new address has been
+  // returned. A zero might mean that the bus is shorted, there are no devices, 
+  // or you have already retrieved all of them.  It might be a good idea to 
+  // check the CRC to make sure you didn't get garbage.  The order is 
+  // deterministic. You will always get the same devices in the same order
+  //
+  // Must be called before search()
+  //oneWire.reset_search();
+  // assigns the first address found to insideThermometer
+  //if (!oneWire.search(insideThermometer)) Serial.println("Unable to find address for insideThermometer");
+
+  // show the addresses we found on the bus
+  Serial.print("Device 0 Address: ");
+  printAddress(insideThermometer);
+  Serial.println();
+
+  delay(3000);  
+}
+
+void loop()
+{
+  // here is where you'd put code that needs to be running all the time.
+
+  //=======temp get begin ===========//
+  unsigned long current_temp_get_Millis = millis();
+
+  if ((current_temp_get_Millis - previous_temp_get_Millis) > interval_temp_get) {
+    previous_temp_get_Millis = millis();
+    
+    lcd.setBacklight(LOW);
+    lcd.clear();
+    sensors.requestTemperatures(); // Send the command to get temperatures
+    // It responds almost immediately. Let's print out the data
+    printTemperature(insideThermometer); // Use a simple function to print out the data
+    Serial.print(hour());
+    Serial.print(minute());
+    Serial.println(second());
+    display_temp_on_lcd(insideThermometer);
+    lcd.setBacklight(HIGH);
+  }
+  else{
+  }
+  //======temp get end =============// 
+
+  // ====== blink LED begin ============ //
+  unsigned long current_led_blink_Millis = millis();
+
+  if(current_led_blink_Millis - previous_led_blink_Millis > interval_led_blink) {
+    // save the last time you blinked the LED 
+    previous_led_blink_Millis = current_led_blink_Millis;   
+
+    // toggle the LED state
+    if (ledState == LOW) {
+      ledState = HIGH;
+    }
+    else {
+      ledState = LOW;
+    }
+    // set the LED with the ledState of the variable:
+    digitalWrite(ledPin, ledState);
+  }
+  else{
+  }
+  //======== blink LED end ==========//
+}
+// function to print the temperature for a device
+void printTemperature(DeviceAddress deviceAddress) //28331531050000F6
+{
+  // method 2 - faster
+  float tempC = sensors.getTempC(deviceAddress);
+  Serial.print("Temp C: ");
+  Serial.println(tempC);
+  Serial.print("LM35 Temp C: ");
+  Serial.println(getLM35temp());
+}
+// function to print a device address
+void printAddress(DeviceAddress deviceAddress)
+{
+  for (uint8_t i = 0; i < 8; i++)
+  {
+    if (deviceAddress[i] < 16) Serial.print("0");
+    Serial.print(deviceAddress[i], HEX);
+  }
+}
+
+float getLM35temp() {
+
+  //declare variables
+  float lv_lm35_tempC;
+  int tempPin = 0;
+  lv_lm35_tempC = analogRead(tempPin);           //read the value from the sensor
+  lv_lm35_tempC = (5.0 * lv_lm35_tempC * 100.0)/1024.0;  //convert the analog data to temperature
+  //Serial.print((byte)tempC); 
+  return lv_lm35_tempC;
+}
+void display_temp_on_lcd (DeviceAddress deviceAddress) {
+
+  lcd.setCursor (0,1);        // go to start of 2nd line
+  lcd.print("T1=");
+  lcd.print(sensors.getTempC(deviceAddress),1); //displays 1 decimal symbol
+  lcd.print((char)223); //degree symbol
+};

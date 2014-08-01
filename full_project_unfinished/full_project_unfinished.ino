@@ -45,7 +45,7 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
 // arrays to hold device address
-DeviceAddress insideThermometer;
+DeviceAddress ds18_1;
 
 // Other setups
 // set pin numbers:
@@ -67,6 +67,10 @@ unsigned long previous_temp_get_Millis = 0;
 unsigned long interval_temp_get = 10000;
 
 void setup() {
+  // start serial port
+  Serial.begin(9600);
+  Serial.println("Show stuff on lcd with delays...");
+  
   lcd.begin (16,2); //  <<----- My LCD was 16x2
   // Switch on the backlight
   lcd.setBacklightPin(BACKLIGHT_PIN,POSITIVE);
@@ -89,9 +93,6 @@ void setup() {
   pinMode(ledPin, OUTPUT);
   pinMode(lightPin, OUTPUT);
  
-  // start serial port
-  Serial.begin(9600);
-  Serial.println("Dallas Temperature IC Control Library Demo");
 
   // locate devices on the bus
   Serial.print("Locating devices...");
@@ -111,7 +112,7 @@ void setup() {
   // you would do this to initially discover addresses on the bus and then 
   // use those addresses and manually assign them (see above) once you know 
   // the devices on your bus (and assuming they don't change).
-  if (!sensors.getAddress(insideThermometer, 0)) Serial.println("Unable to find address for Device 0"); 
+  if (!sensors.getAddress(ds18_1, 0)) Serial.println("Unable to find address for Device 0"); 
 
   // method 2: search()
   // search() looks for the next device. Returns 1 if a new address has been
@@ -127,7 +128,7 @@ void setup() {
 
   // show the addresses we found on the bus
   Serial.print("Device 0 Address: ");
-  printAddress(insideThermometer);
+  printAddress(ds18_1);
   Serial.println();
 
   //delay(3000);  
@@ -147,11 +148,11 @@ void loop()
     lcd.clear();
     sensors.requestTemperatures(); // Send the command to get temperatures
     // It responds almost immediately. Let's print out the data
-    printTemperature(insideThermometer); // Use a simple function to print out the data
+    printTemperature(ds18_1); // Use a simple function to print out the data
     Serial.print(hour());
     Serial.print(minute());
     Serial.println(second());
-    display_temp_on_lcd(insideThermometer);
+    display_temp_on_lcd(ds18_1);
     lcd.setBacklight(HIGH);
   }
   else{
@@ -185,9 +186,7 @@ void printTemperature(DeviceAddress deviceAddress) //28331531050000F6
   // method 2 - faster
   float tempC = sensors.getTempC(deviceAddress);
   Serial.print("Temp C: ");
-  Serial.println(tempC);
-  Serial.print("LM35 Temp C: ");
-  Serial.println(getLM35temp());
+  Serial.println(tempC,1);
 }
 // function to print a device address
 void printAddress(DeviceAddress deviceAddress)
@@ -199,16 +198,6 @@ void printAddress(DeviceAddress deviceAddress)
   }
 }
 
-float getLM35temp() {
-
-  //declare variables
-  float lv_lm35_tempC;
-  int tempPin = 0;
-  lv_lm35_tempC = analogRead(tempPin);           //read the value from the sensor
-  lv_lm35_tempC = (5.0 * lv_lm35_tempC * 100.0)/1024.0;  //convert the analog data to temperature
-  //Serial.print((byte)tempC); 
-  return lv_lm35_tempC;
-}
 void display_temp_on_lcd (DeviceAddress deviceAddress) {
 
   lcd.setCursor (0,1);        // go to start of 2nd line

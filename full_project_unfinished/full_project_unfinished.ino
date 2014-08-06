@@ -11,7 +11,7 @@ Features:
 
 //clock library
 #include <Time.h>
-#include <TimeAlarms.h>
+#include <DS1307RTC.h>
 
 //DISPLAY SET
 #include <Wire.h>
@@ -56,20 +56,29 @@ int ledState = LOW;             // ledState used to set the LED
 
 // Pump Relay pin number
 
+int statePumpPin;
 // Light Relay pin number
 const int lightPin = 9;     
+int stateLightPin;
 
 // Timers in miliseconds:
-unsigned long hour1 = 3600000; 
 unsigned long previous_led_blink_Millis = 0;        // will store last time LED was updated
 unsigned long interval_led_blink = 200;           // interval at which to blink (milliseconds)
 unsigned long previous_temp_get_Millis = 0;
 unsigned long interval_temp_get = 10000;
+unsigned long previous_light_start_check_Millis = 0;        // will store last time LED was updated
+unsigned long interval_light_start_check = 8000;           // (1 min) interval at which to check time for light
 
 void setup() {
   // start serial port
   Serial.begin(9600);
   Serial.println("Show stuff on lcd with delays...");
+  delay(1000);
+  
+  //Get time from RTC
+  setSyncProvider(RTC.get);   // the function to get the time from the RTC 
+  //setTime(hour(),minute(),second(),day(),month(),year()); // set time to Saturday 8:29:00am Jan 1 2011
+  //setTime(23,28,00,6,8,2014);
   
   lcd.begin (16,2); //  <<----- My LCD was 16x2
   // Switch on the backlight
@@ -79,15 +88,15 @@ void setup() {
   lcd.print("Watering system");
   lcd.setCursor (0,1);        // go to start of 2nd line
   lcd.print("by kdobrev");
-  Alarm.delay(1500);lcd.clear();
-  lcd.print("-no Delay");
-  Alarm.delay(1500);lcd.clear();  
-  lcd.print("-temp sensor"); 
-  lcd.setCursor (0,1);
-  lcd.print("and time on lcd");
-  Alarm.delay(1500);lcd.clear();
-  lcd.print("-on/off relays"); 
-  Alarm.delay(1500);lcd.clear();
+  delay(1000);lcd.clear();
+//  lcd.print("-no Delay");
+//  delay(1500);lcd.clear();  
+//  lcd.print("-temp sensor"); 
+//  lcd.setCursor (0,1);
+//  lcd.print("and time on lcd");
+//  delay(1500);lcd.clear();
+//  lcd.print("-on/off relays"); 
+//  delay(1500);lcd.clear();
   
   // set the digital pin as output:
   pinMode(ledPin, OUTPUT);
@@ -131,29 +140,28 @@ void setup() {
   printAddress(ds18_1);
   Serial.println();
 
+
+  light_on();
   //delay(3000);  
 }
 
 void loop()
 {
   // here is where you'd put code that needs to be running all the time.
-
+   delay(1000);
+   digitalClockDisplay_serial();
+   digitalClockDisplay_lcd();
+   
   //=======temp get begin ===========//
   unsigned long current_temp_get_Millis = millis();
 
   if ((current_temp_get_Millis - previous_temp_get_Millis) > interval_temp_get) {
     previous_temp_get_Millis = millis();
-    
-    lcd.setBacklight(LOW);
-    lcd.clear();
+    //lcd.clear();
     sensors.requestTemperatures(); // Send the command to get temperatures
     // It responds almost immediately. Let's print out the data
     printTemperature(ds18_1); // Use a simple function to print out the data
-    Serial.print(hour());
-    Serial.print(minute());
-    Serial.println(second());
     display_temp_on_lcd(ds18_1);
-    lcd.setBacklight(HIGH);
   }
   else{
   }
@@ -179,6 +187,23 @@ void loop()
   else{
   }
   //======== blink LED end ==========//
+  
+  //=======light_start_check begin ===========//
+  unsigned long current_light_start_check = millis();
+
+  if ((current_light_start_check - previous_light_start_check_Millis) > interval_light_start_check) {
+    previous_light_start_check_Millis = millis();
+
+    if ( hour() >= 6 && hour() < 21 && !digitalRead(lightPin) ) {
+      light_on();
+    }
+    if ( (hour() >= 21 || hour() < 6) && digitalRead(lightPin) ) {
+      light_off();
+    }
+  }
+  else{
+  }
+  //======light_start_check end =============// 
 }
 // function to print the temperature for a device
 void printTemperature(DeviceAddress deviceAddress) //28331531050000F6
@@ -200,8 +225,63 @@ void printAddress(DeviceAddress deviceAddress)
 
 void display_temp_on_lcd (DeviceAddress deviceAddress) {
 
-  lcd.setCursor (0,1);        // go to start of 2nd line
-  lcd.print("T1=");
+  lcd.setCursor (9,0);        // [place],[line] --> go to after the clock on line 1
+  lcd.print("T=");
   lcd.print(sensors.getTempC(deviceAddress),1); //displays 1 decimal symbol
   lcd.print((char)223); //degree symbol
 };
+void digitalClockDisplay_serial(){
+  // digital clock display of the time
+  Serial.print(hour());
+  printDigits(minute());
+  printDigits(second());
+  Serial.print(" ");
+  Serial.print(day());
+  Serial.print("/");
+  Serial.print(month());
+  Serial.print("/");
+  Serial.print(year()); 
+  Serial.println(); 
+}
+void digitalClockDisplay_lcd(){
+  //lcd.clear();
+  lcd.setCursor (0,0);        // go to start of 1nd line
+  // digital clock display of the time
+  lcd.print(hour());
+  printDigits_lcd(minute());
+  printDigits_lcd(second());
+  //lcd.print(" ");
+  lcd.setCursor (0,1);        // go to start of 1nd line
+  lcd.print(day());
+  lcd.print("/");
+  lcd.print(month());
+  lcd.print("/");
+  lcd.print(year()); 
+  //lcd.println(); 
+}
+void printDigits(int digits){
+  // utility function for digital clock display: prints preceding colon and leading 0
+  Serial.print(":");
+  if(digits < 10)
+    Serial.print('0');
+  Serial.print(digits);
+}
+void printDigits_lcd(int digits){
+  // utility function for digital clock display: prints preceding colon and leading 0
+  lcd.print(":");
+  if(digits < 10)
+    lcd.print('0');
+  lcd.print(digits);
+}
+void light_on() {
+    digitalWrite(lightPin, LOW);
+    Serial.println("Light is ON.");
+    lcd.setCursor(15,1);
+    lcd.print("*");
+}
+void light_off() {
+    digitalWrite(lightPin, HIGH);
+    Serial.println("Light is OFF.");
+    lcd.setCursor(15,1);
+    lcd.print(" ");
+}

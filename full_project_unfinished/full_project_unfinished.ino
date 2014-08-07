@@ -55,11 +55,17 @@ const int ledPin =  13;      // the number of the LED pin
 int ledState = LOW;             // ledState used to set the LED
 
 // Pump Relay pin number
+const int pumpPin = 8;
+int pumpOnTimeHour = 22;
+int pumpOnTimeMinute = 02;
+int pumpTimeDutyOn = 5; //seconds
+int pumpTimeDutyOff = 30; //seconds
+int pumpTimeDutyRepeats = 3; //seconds
 
-int statePumpPin;
 // Light Relay pin number
 const int lightPin = 9;     
-int stateLightPin;
+int lightOnTime = 6;
+int lightOffTime = 22;
 
 // Timers in miliseconds:
 unsigned long previous_led_blink_Millis = 0;        // will store last time LED was updated
@@ -148,7 +154,7 @@ void setup() {
 void loop()
 {
   // here is where you'd put code that needs to be running all the time.
-   delay(1000);
+   delay(950);
    digitalClockDisplay_serial();
    digitalClockDisplay_lcd();
    
@@ -193,12 +199,20 @@ void loop()
 
   if ((current_light_start_check - previous_light_start_check_Millis) > interval_light_start_check) {
     previous_light_start_check_Millis = millis();
-
-    if ( hour() >= 6 && hour() < 21 && !digitalRead(lightPin) ) {
+    
+    // Check time to light lights UP
+    if ( (hour() >= lightOnTime || hour() < lightOffTime) && !digitalRead(lightPin) ) {
       light_on();
     }
-    if ( (hour() >= 21 || hour() < 6) && digitalRead(lightPin) ) {
+    
+    // Check time to shut lights DOWN
+    if ( (hour() >= lightOffTime || hour() < lightOnTime) && digitalRead(lightPin) ) {
       light_off();
+    }
+    
+    // Check time to water the plants
+    if (hour() == pumpOnTimeHour && minute() == pumpOnTimeMinute) {
+      pump_cycle(pumpTimeDutyOn, pumpTimeDutyOff, pumpTimeDutyRepeats); 
     }
   }
   else{
@@ -285,3 +299,12 @@ void light_off() {
     lcd.setCursor(15,1);
     lcd.print(" ");
 }
+void pump_cycle(int On, int Off, int Repeats) {
+    for(int i=0; i<=Repeats; i++) {
+      digitalWrite(pumpPin, LOW);
+      delay(On);
+      digitalWrite(pumpPin, HIGH);
+      delay(Off);
+    }
+}
+

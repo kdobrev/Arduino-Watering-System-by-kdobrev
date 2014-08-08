@@ -202,12 +202,12 @@ void loop()
     previous_light_start_check_Millis = millis();
     
     // Check time to light lights UP
-    if ( (hour() >= lightOnTime || hour() < lightOffTime) && !digitalRead(lightPin) ) {
+    if ( hour() >= lightOnTime && hour() < lightOffTime && !digitalRead(lightPin) ) {
       light_on();
     }
     
     // Check time to shut lights DOWN
-    if ( (hour() >= lightOffTime || hour() < lightOnTime) && digitalRead(lightPin) ) {
+    if ( hour() >= lightOffTime || hour() < lightOnTime ) {
       light_off();
     }
     

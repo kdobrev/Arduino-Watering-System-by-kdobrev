@@ -82,6 +82,7 @@ void setup() {
   delay(1000);
   
   //Get time from RTC
+  //RTC.set(1407544080); // set the RTC and the system time
   setSyncProvider(RTC.get);   // the function to get the time from the RTC 
   //setTime(hour(),minute(),second(),day(),month(),year()); // set time to Saturday 8:29:00am Jan 1 2011
   //setTime(23,28,00,6,8,2014);
@@ -301,10 +302,14 @@ void light_off() {
 }
 void pump_cycle(int On, int Off, int Repeats) {
     for(int i=0; i<=Repeats; i++) {
+      lcd.setCursor(13,1);
+      lcd.print("W");
       digitalWrite(pumpPin, LOW);
       delay(On);
+      lcd.print("_");
       digitalWrite(pumpPin, HIGH);
       delay(Off);
     }
+    lcd.print(" ");
 }
 

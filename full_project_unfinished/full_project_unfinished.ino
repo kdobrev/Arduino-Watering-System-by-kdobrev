@@ -57,9 +57,9 @@ int ledState = LOW;             // ledState used to set the LED
 // Pump Relay pin number
 const int pumpPin = 8;
 int pumpOnTimeHour = 22;
-int pumpOnTimeMinute = 02;
-int pumpTimeDutyOn = 5; //seconds
-int pumpTimeDutyOff = 30; //seconds
+int pumpOnTimeMinute = 15;
+int pumpTimeDutyOn = 6000; //miliseconds
+int pumpTimeDutyOff = 15000; //miliseconds
 int pumpTimeDutyRepeats = 3; //seconds
 
 // Light Relay pin number
@@ -108,7 +108,7 @@ void setup() {
   // set the digital pin as output:
   pinMode(ledPin, OUTPUT);
   pinMode(lightPin, OUTPUT);
- 
+  pinMode(pumpPin, OUTPUT);
 
   // locate devices on the bus
   Serial.print("Locating devices...");
@@ -147,8 +147,8 @@ void setup() {
   printAddress(ds18_1);
   Serial.println();
 
-
-  light_on();
+  digitalWrite(pumpPin, HIGH); //turn pump off
+  light_on();                  //turn light up
   //delay(3000);  
 }
 
@@ -301,15 +301,17 @@ void light_off() {
     lcd.print(" ");
 }
 void pump_cycle(int On, int Off, int Repeats) {
-    for(int i=0; i<=Repeats; i++) {
+    for(int i=1; i<=Repeats; i++) {
       lcd.setCursor(13,1);
       lcd.print("W");
       digitalWrite(pumpPin, LOW);
       delay(On);
+      lcd.setCursor(13,1);
       lcd.print("_");
       digitalWrite(pumpPin, HIGH);
-      delay(Off);
+      if (i != Repeats)
+        delay(Off);
     }
+    lcd.setCursor(13,1);
     lcd.print(" ");
 }
-

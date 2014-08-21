@@ -56,11 +56,11 @@ int ledState = LOW;             // ledState used to set the LED
 
 // Pump Relay pin number
 const int pumpPin = 8;
-int pumpOnTimeHour = 22;
-int pumpOnTimeMinute = 15;
-int pumpTimeDutyOn = 6000; //miliseconds
-int pumpTimeDutyOff = 15000; //miliseconds
-int pumpTimeDutyRepeats = 3; //seconds
+int pumpOnTimeHour = 21;
+int pumpOnTimeMinute = 30;
+int pumpTimeDutyOn = 15000; //miliseconds
+int pumpTimeDutyOff = 30000; //miliseconds
+int pumpTimeDutyRepeats = 3; //times to run
 
 // Light Relay pin number
 const int lightPin = 9;     
@@ -73,7 +73,7 @@ unsigned long interval_led_blink = 200;           // interval at which to blink 
 unsigned long previous_temp_get_Millis = 0;
 unsigned long interval_temp_get = 10000;
 unsigned long previous_light_start_check_Millis = 0;        // will store last time LED was updated
-unsigned long interval_light_start_check = 8000;           // (1 min) interval at which to check time for light
+unsigned long interval_light_start_check = 10000;           // (10 sec) interval at which to check time for light
 
 void setup() {
   // start serial port

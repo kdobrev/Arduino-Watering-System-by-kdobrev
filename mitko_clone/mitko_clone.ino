@@ -15,7 +15,7 @@ Features:
 
 //DISPLAY SET
 #include <Wire.h>
-#include <LCD.h>
+//#include <LCD.h>
 #include <LiquidCrystal_I2C.h>
 
 #define I2C_ADDR    0x27 // <<----- Add your address here.  Find it from I2C Scanner
@@ -85,16 +85,8 @@ void setup() {
   //RTC.set(1407544080); // set the RTC and the system time
   setSyncProvider(RTC.get);   // the function to get the time from the RTC 
   //setTime(hour(),minute(),second(),day(),month(),year()); // set time to Saturday 8:29:00am Jan 1 2011
-  //setTime(23,28,00,6,8,2014);
+  setTime(0,0,00,30,8,2014);
   welcome_message();
-//  lcd.print("-no Delay");
-//  delay(1500);lcd.clear();  
-//  lcd.print("-temp sensor"); 
-//  lcd.setCursor (0,1);
-//  lcd.print("and time on lcd");
-//  delay(1500);lcd.clear();
-//  lcd.print("-on/off relays"); 
-//  delay(1500);lcd.clear();
   
   // set the digital pin as output:
   pinMode(ledPin, OUTPUT);
@@ -312,8 +304,26 @@ void welcome_message() {
   // Switch on the backlight
   lcd.setBacklightPin(BACKLIGHT_PIN,POSITIVE);
   lcd.setBacklight(HIGH);
+  lcd.clear();
+  lcd.home();
   if ( month() == 8 && day() == 30 ) {
+    delay(100);
+    lcd.setBacklight(LOW);
+    delay(100);
+    lcd.setBacklight(HIGH);
+    delay(150);
+    lcd.setBacklight(LOW);
     mitko_birthday();
+    delay(75);
+    lcd.setBacklight(HIGH);
+    delay(200);
+    lcd.setBacklight(LOW);
+    delay(50);
+    lcd.setBacklight(HIGH);
+    delay(150);
+    lcd.setBacklight(LOW);
+    delay(10);
+    lcd.setBacklight(HIGH);
   }
   else {
     lcd.home (); // go home
@@ -321,9 +331,9 @@ void welcome_message() {
     lcd.print("Watering system");
     lcd.setCursor (3,1);        // go to start of 2nd line
     lcd.print("by kdobrev");
-    delay(2000);
-    lcd.clear();
   }
+  delay(3000);
+  lcd.clear();
 }
 
 void mitko_birthday(){
@@ -332,6 +342,4 @@ void mitko_birthday(){
     lcd.print("Happy Birthday");
     lcd.setCursor (5,1);        // go to start of 2nd line
     lcd.print("Mitko");
-    delay(2000);
-    lcd.clear();
 }

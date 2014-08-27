@@ -150,7 +150,7 @@ void loop()
    lcd.print("H=");
    if(pumpOnTimeHour < 10) lcd.print('0');
    lcd.print(pumpOnTimeHour);
-   Serial.print("Watering time on=");
+   Serial.print("Watering time On=");
    Serial.println(pumpOnTimeHour);
    
    

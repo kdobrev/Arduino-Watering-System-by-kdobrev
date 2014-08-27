@@ -50,13 +50,17 @@ DeviceAddress ds18_1;
 // Other setups
 // set pin numbers:
 const int ledPin =  13;      // the number of the LED pin
+int sensorPin0 = A0;
 
 // Variables will change:
 int ledState = LOW;             // ledState used to set the LED
+int multiplierPin0 = 0;
+int outputPin0 = 0;
+int pumpOnTimeHour_bias;
 
 // Pump Relay pin number
 const int pumpPin = 8;
-int pumpOnTimeHour = 21;
+int pumpOnTimeHour = 0;
 int pumpOnTimeMinute = 30;
 int pumpTimeDutyOn = 15000; //miliseconds
 int pumpTimeDutyOff = 30000; //miliseconds
@@ -141,6 +145,14 @@ void loop()
    delay(950);
    digitalClockDisplay_serial();
    digitalClockDisplay_lcd();
+   pumpOnTimeHour = map(analogRead(sensorPin0), 0, 1023, 0, 23);
+   lcd.setCursor (12,0);        // [place],[line] --> go to after the clock on line 1
+   lcd.print("H=");
+   if(pumpOnTimeHour < 10) lcd.print('0');
+   lcd.print(pumpOnTimeHour);
+   Serial.print("Watering time on=");
+   Serial.println(pumpOnTimeHour);
+   
    
   //=======temp get begin ===========//
   unsigned long current_temp_get_Millis = millis();
@@ -223,7 +235,7 @@ void printAddress(DeviceAddress deviceAddress)
 
 void display_temp_on_lcd (DeviceAddress deviceAddress) {
 
-  lcd.setCursor (9,0);        // [place],[line] --> go to after the clock on line 1
+  lcd.setCursor (6,0);        // [place],[line] --> go to after the clock on line 1
   lcd.print("T=");
   lcd.print(sensors.getTempC(deviceAddress),1); //displays 1 decimal symbol
   lcd.print((char)223); //degree symbol
@@ -247,14 +259,14 @@ void digitalClockDisplay_lcd(){
   // digital clock display of the time
   lcd.print(hour());
   printDigits_lcd(minute());
-  printDigits_lcd(second());
+  //printDigits_lcd(second());
   //lcd.print(" ");
   lcd.setCursor (0,1);        // go to start of 1nd line
   lcd.print(day());
-  lcd.print("/");
+  lcd.print(".");
   lcd.print(month());
-  lcd.print("/");
-  lcd.print(year()); 
+  //lcd.print("/");
+  //lcd.print(year()); 
   //lcd.println(); 
 }
 void printDigits(int digits){
@@ -322,7 +334,15 @@ void welcome_message() {
     lcd.setBacklight(HIGH);
     delay(150);
     lcd.setBacklight(LOW);
-    delay(10);
+    delay(40);
+    lcd.setBacklight(HIGH);
+    delay(45);
+    lcd.setBacklight(LOW);
+    delay(35);
+    lcd.setBacklight(HIGH);
+    delay(40);
+    lcd.setBacklight(LOW);
+    delay(30);
     lcd.setBacklight(HIGH);
   }
   else {

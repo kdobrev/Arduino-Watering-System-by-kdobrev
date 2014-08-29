@@ -49,22 +49,22 @@ DeviceAddress ds18_1;
 
 // Other setups
 // set pin numbers:
-const int ledPin =  13;      // the number of the LED pin
-int sensorPin0 = A0;
+const int ledPin = 13;      // the number of the LED pin
+int sensorPin0 = A0;         //pumpOnTimeHour - starting the pump 
+int sensorPin1 = A1;         //pumpTimeDutyOn - pump duty cycle
+unsigned int pin1_value = 0;
 
 // Variables will change:
 int ledState = LOW;             // ledState used to set the LED
-int multiplierPin0 = 0;
-int outputPin0 = 0;
-int pumpOnTimeHour_bias;
 
 // Pump Relay pin number
 const int pumpPin = 8;
 int pumpOnTimeHour = 0;
-int pumpOnTimeMinute = 30;
-int pumpTimeDutyOn = 15000; //miliseconds
+int pumpOnTimeMinute = 10;
+unsigned long pumpTimeDutyOn = 15000; //miliseconds
 int pumpTimeDutyOff = 30000; //miliseconds
-int pumpTimeDutyRepeats = 3; //times to run
+int pumpTimeDutyRepeats = 1; //times to run
+int pumpState = 0;           //pump is on or off
 
 // Light Relay pin number
 const int lightPin = 9;     
@@ -73,11 +73,11 @@ int lightOffTime = 22;
 
 // Timers in miliseconds:
 unsigned long previous_led_blink_Millis = 0;        // will store last time LED was updated
-unsigned long interval_led_blink = 200;           // interval at which to blink (milliseconds)
+unsigned long interval_led_blink = 1000;           // interval at which to blink (milliseconds)
 unsigned long previous_temp_get_Millis = 0;
-unsigned long interval_temp_get = 10000;
+unsigned long interval_temp_get = 15000;
 unsigned long previous_light_start_check_Millis = 0;        // will store last time LED was updated
-unsigned long interval_light_start_check = 10000;           // (10 sec) interval at which to check time for light
+unsigned long interval_light_start_check = 10000;           // (10 sec) interval at which to check time for light and watering
 
 void setup() {
   // start serial port
@@ -89,13 +89,15 @@ void setup() {
   //RTC.set(1407544080); // set the RTC and the system time
   setSyncProvider(RTC.get);   // the function to get the time from the RTC 
   //setTime(hour(),minute(),second(),day(),month(),year()); // set time to Saturday 8:29:00am Jan 1 2011
-  setTime(0,0,00,30,8,2014);
+  //setTime(0,0,00,30,8,2014);
   welcome_message();
   
   // set the digital pin as output:
   pinMode(ledPin, OUTPUT);
   pinMode(lightPin, OUTPUT);
   pinMode(pumpPin, OUTPUT);
+  
+  digitalWrite(pumpPin, HIGH); //turn pump off
 
   // locate devices on the bus
   Serial.print("Locating devices...");
@@ -134,7 +136,6 @@ void setup() {
   printAddress(ds18_1);
   Serial.println();
 
-  digitalWrite(pumpPin, HIGH); //turn pump off
   light_on();                  //turn light up
   //delay(3000);  
 }
@@ -142,24 +143,19 @@ void setup() {
 void loop()
 {
   // here is where you'd put code that needs to be running all the time.
-   delay(950);
-   digitalClockDisplay_serial();
-   digitalClockDisplay_lcd();
+   //delay(950);
    pumpOnTimeHour = map(analogRead(sensorPin0), 0, 1023, 0, 23);
-   lcd.setCursor (12,0);        // [place],[line] --> go to after the clock on line 1
-   lcd.print("H=");
-   if(pumpOnTimeHour < 10) lcd.print('0');
-   lcd.print(pumpOnTimeHour);
-   Serial.print("Watering time On=");
-   Serial.println(pumpOnTimeHour);
-   
+   pin1_value = map(analogRead(sensorPin1), 0, 1023, 0, 60);
+   pumpTimeDutyOn = pin1_value * 1000 * 60; // run the pump in minutes
+   pump_ON(); //used to test the pump 
    
   //=======temp get begin ===========//
   unsigned long current_temp_get_Millis = millis();
 
   if ((current_temp_get_Millis - previous_temp_get_Millis) > interval_temp_get) {
     previous_temp_get_Millis = millis();
-    //lcd.clear();
+    
+    
     sensors.requestTemperatures(); // Send the command to get temperatures
     // It responds almost immediately. Let's print out the data
     printTemperature(ds18_1); // Use a simple function to print out the data
@@ -175,6 +171,25 @@ void loop()
   if(current_led_blink_Millis - previous_led_blink_Millis > interval_led_blink) {
     // save the last time you blinked the LED 
     previous_led_blink_Millis = current_led_blink_Millis;   
+
+    //display refresh
+    digitalClockDisplay_serial();
+    digitalClockDisplay_lcd();
+    lcd.setCursor (12,0);        // [place],[line] --> go to after the clock on line 1
+    lcd.print("H=");
+    if (pumpOnTimeHour < 10) lcd.print('0');
+    lcd.print(pumpOnTimeHour);
+    Serial.print("Watering time On=");
+    Serial.println(pumpOnTimeHour);
+    lcd.setCursor (6,0);        // [place],[line] --> go to after the clock on line 1
+    lcd.print("D=");
+    if (pin1_value < 10) lcd.print('0');
+    lcd.print(pin1_value);
+    Serial.print("Pump On Duration=");
+    Serial.print(pin1_value);
+    Serial.println(" minutes.");
+    Serial.print("Pump Test value=");
+    Serial.println(analogRead(sensorPin1));
 
     // toggle the LED state
     if (ledState == LOW) {
@@ -195,6 +210,8 @@ void loop()
 
   if ((current_light_start_check - previous_light_start_check_Millis) > interval_light_start_check) {
     previous_light_start_check_Millis = millis();
+    
+    //lcd.clear(); //refresh the lcd
     
     // Check time to light lights UP
     if ( hour() >= lightOnTime && hour() < lightOffTime && !digitalRead(lightPin) ) {
@@ -235,7 +252,7 @@ void printAddress(DeviceAddress deviceAddress)
 
 void display_temp_on_lcd (DeviceAddress deviceAddress) {
 
-  lcd.setCursor (6,0);        // [place],[line] --> go to after the clock on line 1
+  lcd.setCursor (6,1);        // [place],[line] --> go to after the clock on line 1
   lcd.print("T=");
   lcd.print(sensors.getTempC(deviceAddress),1); //displays 1 decimal symbol
   lcd.print((char)223); //degree symbol
@@ -289,25 +306,27 @@ void light_on() {
     lcd.setCursor(15,1);
     lcd.print("*");
 }
+
 void light_off() {
     digitalWrite(lightPin, HIGH);
     Serial.println("Light is OFF.");
     lcd.setCursor(15,1);
     lcd.print(" ");
 }
-void pump_cycle(int On, int Off, int Repeats) {
+
+void pump_cycle(unsigned long On, int Off, int Repeats) {
     for(int i=1; i<=Repeats; i++) {
-      lcd.setCursor(13,1);
+      lcd.setCursor(14,1);
       lcd.print("W");
-      digitalWrite(pumpPin, LOW);
+      pwm_pump_on();
       delay(On);
-      lcd.setCursor(13,1);
+      lcd.setCursor(14,1);
       lcd.print("_");
       digitalWrite(pumpPin, HIGH);
       if (i != Repeats)
         delay(Off);
     }
-    lcd.setCursor(13,1);
+    lcd.setCursor(14,1);
     lcd.print(" ");
 }
 
@@ -349,17 +368,99 @@ void welcome_message() {
     lcd.home (); // go home
     lcd.setCursor (0,0);
     lcd.print("Watering system");
-    lcd.setCursor (3,1);        // go to start of 2nd line
-    lcd.print("by kdobrev");
+    lcd.setCursor (4,1);        // [position] [line]
+    lcd.print("to Mitko");
+    delay(1500);
+    lcd.setCursor (2,1);
+    lcd.print("from Kaloyan");
   }
   delay(3000);
   lcd.clear();
 }
 
 void mitko_birthday(){
-    lcd.home (); // go home
-    lcd.setCursor (1,0);
-    lcd.print("Happy Birthday");
-    lcd.setCursor (5,1);        // go to start of 2nd line
-    lcd.print("Mitko");
+  lcd.home (); // go home
+  lcd.setCursor (1,0);
+  lcd.print("Happy Birthday");
+  lcd.setCursor (5,1);        // go to start of 2nd line
+  lcd.print("Mitko");
+}
+
+void pump_ON() {
+  pumpState = digitalRead(pumpPin);
+  if (analogRead(sensorPin1) >= 1000 && pumpState == HIGH) {
+    delay(1000);
+    if (analogRead(sensorPin1) >= 1000) {
+      lcd.setCursor(14,1);
+      lcd.print("W");
+      pwm_pump_on();
+    }
+  }
+  else {
+      if (analogRead(sensorPin1) < 900) {
+      delay(100);
+      if (analogRead(sensorPin1) < 900) {
+        digitalWrite(pumpPin, HIGH); //turn the pump off
+        lcd.setCursor(14,1);
+        lcd.print(" ");
+      }
+    }
+  }
+}
+
+void pwm_pump_on() {
+
+      lcd.setBacklight(LOW);
+//      delay(10);
+//      digitalWrite(pumpPin, LOW); //turn the pump on
+//      delay(5);
+//      digitalWrite(pumpPin, HIGH); //turn the pump off
+//      delay(15);
+//      digitalWrite(pumpPin, LOW); //turn the pump on
+//      delay(10);
+//      digitalWrite(pumpPin, HIGH); //turn the pump off
+//      delay(10);
+      digitalWrite(pumpPin, LOW); //turn the pump on
+      delay(15);
+      digitalWrite(pumpPin, HIGH); //turn the pump off
+      delay(3);
+      digitalWrite(pumpPin, LOW); //turn the pump on
+      delay(20);
+      digitalWrite(pumpPin, HIGH); //turn the pump off
+      delay(3);
+      digitalWrite(pumpPin, LOW); //turn the pump on
+      delay(30);
+      digitalWrite(pumpPin, HIGH); //turn the pump off
+      delay(3);
+      digitalWrite(pumpPin, LOW); //turn the pump on
+      delay(40);
+      digitalWrite(pumpPin, HIGH); //turn the pump off
+      delay(3);
+      digitalWrite(pumpPin, LOW); //turn the pump on
+      delay(50);
+      digitalWrite(pumpPin, HIGH); //turn the pump off
+      delay(3);
+      digitalWrite(pumpPin, LOW); //turn the pump on
+      delay(60);
+      digitalWrite(pumpPin, HIGH); //turn the pump off
+      delay(3);
+      digitalWrite(pumpPin, LOW); //turn the pump on
+      delay(75);
+      digitalWrite(pumpPin, HIGH); //turn the pump off
+      delay(3);
+      digitalWrite(pumpPin, LOW); //turn the pump on
+      delay(100);
+      digitalWrite(pumpPin, HIGH); //turn the pump off
+      delay(3);
+      digitalWrite(pumpPin, LOW); //turn the pump on
+      delay(200);
+      digitalWrite(pumpPin, HIGH); //turn the pump off
+      delay(2);
+      digitalWrite(pumpPin, LOW); //turn the pump on
+      delay(300);
+      digitalWrite(pumpPin, HIGH); //turn the pump off
+      delay(1);
+      digitalWrite(pumpPin, LOW); //turn the pump on
+      lcd.setBacklight(HIGH);
+
 }
